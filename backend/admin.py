@@ -13,5 +13,9 @@ def getfilelist(required_files, folder_path):
 	missing_files = [f for f in required_files if f not in file_names]
 	if missing_files:
 		print("Missing files:", missing_files)
-	return file_names
+		return False, missing_files
+	else:
+		print("All files found!")
+		return True, []
 
+print(getfilelist(['files/file0.txt', 'files/file2.txt', 'files/file3.txt'], 'data'))
