@@ -19,9 +19,9 @@ export function middleware(request: NextRequest) {
     "/api/auth",
     "/api/signin",
     "/api/signup",
+    "/api/password-reset",
     "/api/send-otp",
     "/api/verify-otp",
-    "/api/password-reset",
     "/api/debug-otp",
     "/api/clear-auth",
   ];

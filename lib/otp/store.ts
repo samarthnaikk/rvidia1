@@ -1,78 +1,86 @@
-// This file creates a singleton OTP store that can be shared between API routes
-// In a production application, this would use a database instead of in-memory storage
+// In-memory OTP store with expiration
+const otpStore = new Map<
+  string,
+  {
+    otp: string;
+    expiresAt: number;
+    attempts: number;
+    email: string;
+  }
+>();
 
-// Type definition for OTP store
-interface OtpStoreData {
-  otp: string;
-  userData: any;
-  expires: number;
+const OTP_EXPIRY_TIME = 10 * 60 * 1000; // 10 minutes
+const MAX_ATTEMPTS = 5;
+
+export function generateOTP(): string {
+  // Generate 6-digit OTP
+  return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// In-memory OTP store
-class OtpStoreManager {
-  private static instance: OtpStoreManager;
-  private store: { [key: string]: OtpStoreData } = {};
-
-  private constructor() {}
-
-  public static getInstance(): OtpStoreManager {
-    if (!OtpStoreManager.instance) {
-      OtpStoreManager.instance = new OtpStoreManager();
-    }
-    return OtpStoreManager.instance;
-  }
-
-  // Store an OTP
-  public setOtp(
-    email: string,
-    otp: string,
-    userData: any,
-    expiresInMinutes: number = 15
-  ): void {
-    this.store[email] = {
-      otp,
-      userData,
-      expires: Date.now() + expiresInMinutes * 60 * 1000,
-    };
-    console.log(`OTP stored for ${email}: ${otp}`);
-    console.log(`Active OTPs: ${Object.keys(this.store).join(", ")}`);
-  }
-
-  // Get OTP data
-  public getOtp(email: string): OtpStoreData | null {
-    const data = this.store[email];
-    console.log(`Looking for OTP for ${email}`);
-    console.log(
-      `Currently stored emails: ${Object.keys(this.store).join(", ")}`
-    );
-
-    if (!data) {
-      console.log(`No OTP found for ${email}`);
-      return null;
-    }
-
-    // Check if expired
-    if (Date.now() > data.expires) {
-      console.log(`OTP for ${email} has expired`);
-      delete this.store[email];
-      return null;
-    }
-
-    console.log(`Found valid OTP for ${email}`);
-    return data;
-  }
-
-  // Remove OTP
-  public removeOtp(email: string): void {
-    delete this.store[email];
-    console.log(`OTP removed for ${email}`);
-  }
-
-  // Debug: Get all stored emails (no sensitive data)
-  public getStoredEmails(): string[] {
-    return Object.keys(this.store);
-  }
+export function storeOTP(email: string, otp: string): void {
+  const expiresAt = Date.now() + OTP_EXPIRY_TIME;
+  otpStore.set(email, {
+    otp,
+    expiresAt,
+    attempts: 0,
+    email,
+  });
+  console.log(`OTP stored for ${email}, expires in 10 minutes`);
 }
 
-// Export a singleton instance
-export const otpStore = OtpStoreManager.getInstance();
+export function verifyOTP(email: string, otp: string): boolean {
+  const stored = otpStore.get(email);
+
+  if (!stored) {
+    console.log(`No OTP found for ${email}`);
+    return false;
+  }
+
+  // Check if OTP has expired
+  if (Date.now() > stored.expiresAt) {
+    otpStore.delete(email);
+    console.log(`OTP expired for ${email}`);
+    return false;
+  }
+
+  // Check if max attempts exceeded
+  if (stored.attempts >= MAX_ATTEMPTS) {
+    otpStore.delete(email);
+    console.log(`Max attempts exceeded for ${email}`);
+    return false;
+  }
+
+  // Increment attempt count
+  stored.attempts++;
+
+  // Check OTP
+  if (stored.otp === otp) {
+    otpStore.delete(email);
+    console.log(`OTP verified successfully for ${email}`);
+    return true;
+  }
+
+  console.log(`Invalid OTP attempt for ${email} (${stored.attempts}/${MAX_ATTEMPTS})`);
+  return false;
+}
+
+export function getOTPAttempts(email: string): number {
+  const stored = otpStore.get(email);
+  if (!stored || Date.now() > stored.expiresAt) {
+    return 0;
+  }
+  return stored.attempts;
+}
+
+export function isOTPExpired(email: string): boolean {
+  const stored = otpStore.get(email);
+  if (!stored) {
+    return true;
+  }
+  return Date.now() > stored.expiresAt;
+}
+
+export function deleteOTP(email: string): void {
+  otpStore.delete(email);
+  console.log(`OTP deleted for ${email}`);
+}

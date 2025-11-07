@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
     if (!googleUser.email) {
       console.error("No email received from Google");
       return NextResponse.redirect(
-        `http://localhost:3000/signin?error=no_email`
+        new URL("/signin?error=no_email", request.url)
       );
     }
 

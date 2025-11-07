@@ -1,71 +1,85 @@
-"use client";
+import nodemailer from "nodemailer";
 
-// OtpManager: A client-side utility for handling OTP data
-// This uses localStorage to store the OTP between API calls
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASSWORD,
+  },
+});
 
-interface OtpData {
-  otp: string;
-  email: string;
-  timestamp: number;
-  expires: number; // Expiration time in milliseconds
-}
+export async function sendOTPEmail(email: string, otp: string): Promise<boolean> {
+  try {
+    console.log("Attempting to send OTP to:", email);
+    console.log("Gmail user configured:", !!process.env.GMAIL_USER);
 
-class OtpManager {
-  private readonly STORAGE_KEY = "signup_otp_data";
-
-  // Store OTP data in localStorage
-  storeOtp(email: string, otp: string, expiresInMinutes = 15): void {
-    const otpData: OtpData = {
-      otp,
-      email,
-      timestamp: Date.now(),
-      expires: Date.now() + expiresInMinutes * 60 * 1000,
-    };
-
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(otpData));
-    console.log(`OTP stored for ${email}`);
-  }
-
-  // Get OTP data from localStorage
-  getOtpData(): OtpData | null {
-    const data = localStorage.getItem(this.STORAGE_KEY);
-    if (!data) return null;
-
-    try {
-      const otpData = JSON.parse(data) as OtpData;
-
-      // Check if OTP has expired
-      if (Date.now() > otpData.expires) {
-        console.log("OTP has expired");
-        this.clearOtpData();
-        return null;
-      }
-
-      return otpData;
-    } catch (error) {
-      console.error("Failed to parse OTP data", error);
-      this.clearOtpData();
-      return null;
-    }
-  }
-
-  // Clear OTP data from localStorage
-  clearOtpData(): void {
-    localStorage.removeItem(this.STORAGE_KEY);
-  }
-
-  // Verify if the provided OTP matches the stored OTP
-  verifyOtp(email: string, otp: string): boolean {
-    const data = this.getOtpData();
-
-    // Check if we have OTP data and it's for the correct email
-    if (!data || data.email !== email) {
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_PASSWORD) {
+      console.error("Gmail credentials not configured in .env");
       return false;
     }
 
-    // Check if OTP matches
-    return data.otp === otp;
+    const mailOptions = {
+      from: process.env.GMAIL_USER,
+      to: email,
+      subject: "Your RVIDIA OTP Verification Code",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">Email Verification</h2>
+          <p>Your One-Time Password (OTP) for RVIDIA account verification is:</p>
+          <div style="background-color: #f0f0f0; padding: 20px; border-radius: 5px; text-align: center; margin: 20px 0;">
+            <h1 style="color: #0066cc; letter-spacing: 5px; margin: 0;">${otp}</h1>
+          </div>
+          <p style="color: #666;">This OTP will expire in 10 minutes.</p>
+          <p style="color: #999; font-size: 12px;">If you didn't request this code, please ignore this email.</p>
+        </div>
+      `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log("OTP email sent successfully:", info.response);
+    return true;
+  } catch (error) {
+    console.error("Failed to send OTP email:", error);
+    return false;
   }
 }
 
-export const otpManager = new OtpManager();
+export async function sendPasswordResetEmail(
+  email: string,
+  resetToken: string,
+  resetLink: string
+): Promise<boolean> {
+  try {
+    console.log("Attempting to send password reset email to:", email);
+
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_PASSWORD) {
+      console.error("Gmail credentials not configured in .env");
+      return false;
+    }
+
+    const mailOptions = {
+      from: process.env.GMAIL_USER,
+      to: email,
+      subject: "RVIDIA Password Reset Request",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">Password Reset Request</h2>
+          <p>We received a request to reset your RVIDIA account password.</p>
+          <p>Your password reset OTP is:</p>
+          <div style="background-color: #f0f0f0; padding: 20px; border-radius: 5px; text-align: center; margin: 20px 0;">
+            <h1 style="color: #0066cc; letter-spacing: 5px; margin: 0;">${resetToken}</h1>
+          </div>
+          <p style="color: #666;">This code will expire in 15 minutes.</p>
+          <p style="color: #999; font-size: 12px;">If you didn't request this, please ignore this email or change your password immediately.</p>
+        </div>
+      `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Password reset email sent successfully:", info.response);
+    return true;
+  } catch (error) {
+    console.error("Failed to send password reset email:", error);
+    return false;
+  }
+}
