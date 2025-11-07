@@ -1,0 +1,5 @@
+{
+  "prisma": {
+    "seed": "../backend/scripts/seed.ts"
+  }
+}

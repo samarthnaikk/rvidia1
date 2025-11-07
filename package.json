@@ -1,16 +1,16 @@
 {
-  "name": "my-v0-project",
+  "name": "rvidia",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "next build",
-    "dev": "next dev",
-    "dev:gmail": "cross-env FORCE_GMAIL=true next dev",
-    "lint": "next lint",
-    "start": "next start",
-    "prod": "cross-env NODE_ENV=production next start",
-    "build:prod": "cross-env NODE_ENV=production next build",
-    "dev:prod": "cross-env NODE_ENV=production next dev"
+    "build": "cd frontend && next build",
+    "dev": "cd frontend && next dev",
+    "dev:gmail": "cd frontend && cross-env FORCE_GMAIL=true next dev",
+    "lint": "cd frontend && next lint",
+    "start": "cd frontend && next start",
+    "prod": "cd frontend && cross-env NODE_ENV=production next start",
+    "build:prod": "cd frontend && cross-env NODE_ENV=production next build",
+    "dev:prod": "cd frontend && cross-env NODE_ENV=production next dev"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
