@@ -1,6 +1,6 @@
 import os
 
-def getfilelist(folder_path):
+def getfilelist(required_files, folder_path):
 	file_names = []
 	for root, dirs, files in os.walk(folder_path):
 		for file in files:
@@ -9,4 +9,9 @@ def getfilelist(folder_path):
 				file_names.append(file)
 			else:
 				file_names.append(os.path.join(rel_dir, file))
+
+	missing_files = [f for f in required_files if f not in file_names]
+	if missing_files:
+		print("Missing files:", missing_files)
 	return file_names
+
