@@ -48,5 +48,3 @@ def generatedocker(root_folder, n, batch_number):
 	with open(dockerfile_path, 'w') as f:
 		f.write('\n'.join(dockerfile_content))
 	print(f"Dockerfile written for batch {batch_number} with files: {batch_files}")
-
-generatedocker('data',3,2)
