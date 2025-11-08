@@ -18,4 +18,32 @@ def getfilelist(required_files, folder_path):
 		print("All files found!")
 		return True, []
 
-print(getfilelist(['files/file0.txt', 'files/file2.txt', 'files/file3.txt'], 'data'))
+
+def generatedocker(root_folder, n, batch_number):
+	files_folder = os.path.join(root_folder, 'files')
+	all_files = sorted([f for f in os.listdir(files_folder) if os.path.isfile(os.path.join(files_folder, f))])
+	total_files = len(all_files)
+	if n <= 0 or batch_number < 1 or batch_number > n:
+		print("Invalid n or batch_number")
+		return
+	batch_size = total_files // n
+	remainder = total_files % n
+	start_idx = (batch_number - 1) * batch_size + min(batch_number - 1, remainder)
+	end_idx = start_idx + batch_size
+	if batch_number <= remainder:
+		end_idx += 1
+	batch_files = all_files[start_idx:end_idx]
+
+	dockerfile_content = [
+		'FROM python:3.9-slim',
+		'WORKDIR /app',
+		'COPY . /app',
+		'# Batch files:',
+		f'# {batch_files}',
+		'CMD ["ls", "-l", "/app/files"]'
+	]
+	dockerfile_path = os.path.join(root_folder, 'Dockerfile')
+	with open(dockerfile_path, 'w') as f:
+		f.write('\n'.join(dockerfile_content))
+	print(f"Dockerfile written for batch {batch_number} with files: {batch_files}")
+
