@@ -37,13 +37,16 @@ def generatedocker(root_folder, n, batch_number):
 	dockerfile_content = [
 		'FROM python:3.9-slim',
 		'WORKDIR /app',
-		'COPY . /app',
+		'COPY app.py /app/',
 		'# Batch files:',
 		f'# {batch_files}',
-		'CMD ["ls", "-l", "/app/files"]'
 	]
+	for file in batch_files:
+		dockerfile_content.append(f'COPY files/{file} /app/files/{file}')
+	dockerfile_content.append('CMD ["python", "app.py"]')
 	dockerfile_path = os.path.join(root_folder, 'Dockerfile')
 	with open(dockerfile_path, 'w') as f:
 		f.write('\n'.join(dockerfile_content))
 	print(f"Dockerfile written for batch {batch_number} with files: {batch_files}")
 
+generatedocker('data',3,2)

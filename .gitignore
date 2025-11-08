@@ -12,7 +12,7 @@
 /.next/
 /out/
 /frontend/out/
-
+Dockerfile
 # production
 /build
 /frontend/build
