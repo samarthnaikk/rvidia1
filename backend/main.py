@@ -65,25 +65,28 @@ def admin_send():
 @app.route('/user/recieve', methods=['GET'])
 def user_receive():
 	"""
-	User can receive their latest Dockerfile (no verification, just needs user_id param).
-	Returns the Dockerfile content and admin id as JSON.
+	User can receive all their Dockerfiles with keep=true (no verification, just needs user_id param).
+	Returns a list of dockerfiles and their sources as JSON.
 	"""
 	user_id = request.args.get('user_id')
 	if not user_id:
 		return jsonify({'error': 'user_id required as query param'}), 400
 	conn = sqlite3.connect(DB_PATH)
 	c = conn.cursor()
-	c.execute('SELECT dockerfile, adminid FROM dockerfiles WHERE userid = ? ORDER BY sent_at DESC LIMIT 1', (user_id,))
-	row = c.fetchone()
+	c.execute('SELECT dockerfile, adminid FROM dockerfiles WHERE userid = ? AND keep = 1 ORDER BY sent_at DESC', (user_id,))
+	rows = c.fetchall()
 	conn.close()
-	if not row:
+	if not rows:
 		return jsonify({'error': 'No Dockerfile available for this user'}), 404
-	dockerfile_content = row[0].decode('utf-8') if isinstance(row[0], bytes) else str(row[0])
-	adminid = row[1]
-	return jsonify({
-		'dockerfile': dockerfile_content,
-		'source': adminid
-	})
+	dockerfiles = []
+	for row in rows:
+		dockerfile_content = row[0].decode('utf-8') if isinstance(row[0], bytes) else str(row[0])
+		adminid = row[1]
+		dockerfiles.append({
+			'dockerfile': dockerfile_content,
+			'source': adminid
+		})
+	return jsonify({'dockerfiles': dockerfiles})
 
 # === Main Entrypoint ===
 if __name__ == '__main__':
