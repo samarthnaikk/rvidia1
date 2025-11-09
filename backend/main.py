@@ -51,8 +51,12 @@ def admin_send():
 	conn = sqlite3.connect(DB_PATH)
 	c = conn.cursor()
 	for user_id in ALLOWED_USER_IDS:
-		c.execute('INSERT INTO dockerfiles (userid, adminid, keep, dockerfile, sent_at) VALUES (?, ?, ?, ?, ?)',
-				  (user_id, adminid, int(keep), dockerfile_content, datetime.datetime.now()))
+		# Check for duplicate (all columns except sent_at)
+		c.execute('''SELECT 1 FROM dockerfiles WHERE userid=? AND adminid=? AND keep=? AND dockerfile=?''',
+				  (user_id, adminid, int(keep), dockerfile_content))
+		if not c.fetchone():
+			c.execute('INSERT INTO dockerfiles (userid, adminid, keep, dockerfile, sent_at) VALUES (?, ?, ?, ?, ?)',
+					  (user_id, adminid, int(keep), dockerfile_content, datetime.datetime.now()))
 	conn.commit()
 	conn.close()
 	return jsonify({'message': f'Dockerfile stored in DB for users: {ALLOWED_USER_IDS}'}), 200
