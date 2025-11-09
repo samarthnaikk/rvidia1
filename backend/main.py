@@ -1,45 +1,57 @@
 from flask import Flask, request, send_file, jsonify
 import os
+import sqlite3
 
 app = Flask(__name__)
 
 
-# In-memory mapping of user_id to Dockerfile content (simulate per-user delivery)
-user_dockerfiles = {}
+ALLOWED_USER_IDS = ['user1', 'user2', 'user3']  # Define allowed users here
+
+# SQLite setup
+import datetime
+DB_PATH = os.path.join(os.path.dirname(__file__), 'dockerfiles.db')
+def init_db():
+	conn = sqlite3.connect(DB_PATH)
+	c = conn.cursor()
+	c.execute('''CREATE TABLE IF NOT EXISTS dockerfiles (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		userid TEXT NOT NULL,
+		adminid TEXT NOT NULL,
+		keep INTEGER NOT NULL,
+		dockerfile BLOB NOT NULL,
+		sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+	)''')
+	c.execute('CREATE INDEX IF NOT EXISTS idx_userid ON dockerfiles(userid)')
+	c.execute('CREATE INDEX IF NOT EXISTS idx_adminid ON dockerfiles(adminid)')
+	conn.commit()
+	conn.close()
+
+init_db()
 DOCKERFILE_PATH = os.path.join(os.path.dirname(__file__), 'data', 'Dockerfile')
 
 
 
 @app.route('/admin/send', methods=['POST'])
 def admin_send():
-	data = request.json
-	user_ids = data.get('user_ids')
-	if not user_ids or not isinstance(user_ids, list):
-		return jsonify({'error': 'user_ids (list) required'}), 400
+	data = request.json or {}
+	adminid = data.get('adminid', 'admin')
+	keep = data.get('keep', True)
 	if not os.path.exists(DOCKERFILE_PATH):
 		return jsonify({'error': 'Dockerfile not found'}), 404
 	with open(DOCKERFILE_PATH, 'rb') as f:
 		dockerfile_content = f.read()
-	for user_id in user_ids:
-		user_dockerfiles[user_id] = dockerfile_content
-	return jsonify({'message': f'Dockerfile sent to users: {user_ids}'}), 200
+	conn = sqlite3.connect(DB_PATH)
+	c = conn.cursor()
+	for user_id in ALLOWED_USER_IDS:
+		c.execute('INSERT INTO dockerfiles (userid, adminid, keep, dockerfile, sent_at) VALUES (?, ?, ?, ?, ?)',
+				  (user_id, adminid, int(keep), dockerfile_content, datetime.datetime.now()))
+	conn.commit()
+	conn.close()
+	return jsonify({'message': f'Dockerfile stored in DB for users: {ALLOWED_USER_IDS}'}), 200
 
 
 
-@app.route('/user/recieve', methods=['GET'])
-def user_receive():
-	user_id = request.args.get('user_id')
-	if not user_id:
-		return jsonify({'error': 'user_id required as query param'}), 400
-	if user_id not in user_dockerfiles:
-		return jsonify({'error': 'No Dockerfile available for this user'}), 404
-
-	save_path = os.path.join(os.path.dirname(__file__), 'data', 'Dockerfile')
-	with open(save_path, 'wb') as f:
-		f.write(user_dockerfiles[user_id])
-
-	del user_dockerfiles[user_id]
-	return jsonify({'message': 'Dockerfile received and saved.'}), 200
+# Optionally, you can implement a user receive endpoint to fetch from DB if needed
 
 if __name__ == '__main__':
 	app.run(host='0.0.0.0', port=5001)
