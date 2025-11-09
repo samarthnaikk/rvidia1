@@ -3,7 +3,7 @@
 import os
 import sqlite3
 import datetime
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file, after_this_request
 
 # === App and DB Setup ===
 app = Flask(__name__)
@@ -62,20 +62,24 @@ def admin_send():
 def user_receive():
 	"""
 	User can receive their latest Dockerfile (no verification, just needs user_id param).
-	Returns the Dockerfile content as plain text.
+	Returns the Dockerfile content and admin id as JSON.
 	"""
 	user_id = request.args.get('user_id')
 	if not user_id:
 		return jsonify({'error': 'user_id required as query param'}), 400
 	conn = sqlite3.connect(DB_PATH)
 	c = conn.cursor()
-	c.execute('SELECT dockerfile FROM dockerfiles WHERE userid = ? ORDER BY sent_at DESC LIMIT 1', (user_id,))
+	c.execute('SELECT dockerfile, adminid FROM dockerfiles WHERE userid = ? ORDER BY sent_at DESC LIMIT 1', (user_id,))
 	row = c.fetchone()
 	conn.close()
 	if not row:
 		return jsonify({'error': 'No Dockerfile available for this user'}), 404
-	dockerfile_content = row[0]
-	return app.response_class(dockerfile_content, mimetype='text/plain')
+	dockerfile_content = row[0].decode('utf-8') if isinstance(row[0], bytes) else str(row[0])
+	adminid = row[1]
+	return jsonify({
+		'dockerfile': dockerfile_content,
+		'source': adminid
+	})
 
 # === Main Entrypoint ===
 if __name__ == '__main__':
