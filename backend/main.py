@@ -62,6 +62,7 @@ def admin_send():
 def user_receive():
 	"""
 	User can receive their latest Dockerfile (no verification, just needs user_id param).
+	Returns the Dockerfile content as plain text.
 	"""
 	user_id = request.args.get('user_id')
 	if not user_id:
@@ -74,10 +75,7 @@ def user_receive():
 	if not row:
 		return jsonify({'error': 'No Dockerfile available for this user'}), 404
 	dockerfile_content = row[0]
-	save_path = os.path.join(BASE_DIR, 'data', 'Dockerfile')
-	with open(save_path, 'wb') as f:
-		f.write(dockerfile_content)
-	return jsonify({'message': 'Dockerfile received and saved.'}), 200
+	return app.response_class(dockerfile_content, mimetype='text/plain')
 
 # === Main Entrypoint ===
 if __name__ == '__main__':
