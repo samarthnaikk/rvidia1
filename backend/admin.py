@@ -1,4 +1,37 @@
 import os
+import sqlite3
+
+def print_users():
+    db_path = "/Users/samarthnaik/Desktop/Projects/rvidia1/frontend/prisma/dev.db"
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Get all users
+        cursor.execute("SELECT id, username, email, role, createdAt FROM User ORDER BY role, username")
+        users = cursor.fetchall()
+        
+        print("\n=== ALL USERS FROM DATABASE ===")
+        print(f"{'ID':<5} {'Username':<15} {'Email':<25} {'Role':<10} {'Created':<20}")
+        print("-" * 80)
+        
+        for user in users:
+            user_id, username, email, role, created = user
+            print(f"{user_id:<5} {username:<15} {email:<25} {role:<10} {created:<20}")
+        
+        print(f"\nTotal users found: {len(users)}")
+        
+        # Count by role
+        cursor.execute("SELECT role, COUNT(*) FROM User GROUP BY role")
+        role_counts = cursor.fetchall()
+        print("\nUsers by role:")
+        for role, count in role_counts:
+            print(f"  {role}: {count}")
+            
+        conn.close()
+        
+    except Exception as e:
+        print(f"Error accessing database: {e}")
 
 def getfilelist(required_files, folder_path):
 	file_names = []
@@ -48,3 +81,5 @@ def generatedocker(root_folder, n, batch_number):
 	with open(dockerfile_path, 'w') as f:
 		f.write('\n'.join(dockerfile_content))
 	print(f"Dockerfile written for batch {batch_number} with files: {batch_files}")
+
+#print(print_users())
