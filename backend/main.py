@@ -38,59 +38,6 @@ def init_db():
 
 init_db()
 
-# === Admin Endpoint ===
-@app.route('/admin/send', methods=['POST'])
-def admin_send():
-	"""
-	Admin sends Dockerfile to all allowed users. Stores in DB with adminid and keep flag.
-	"""
-	data = request.json or {}
-	adminid = data.get('adminid', 'admin')
-	keep = data.get('keep', True)
-	if not os.path.exists(DOCKERFILE_PATH):
-		return jsonify({'error': 'Dockerfile not found'}), 404
-	with open(DOCKERFILE_PATH, 'rb') as f:
-		dockerfile_content = f.read()
-	conn = sqlite3.connect(DB_PATH)
-	c = conn.cursor()
-	for user_id in ALLOWED_USER_IDS:
-		# Check for duplicate (all columns except sent_at)
-		c.execute('''SELECT 1 FROM dockerfiles WHERE userid=? AND adminid=? AND keep=? AND dockerfile=?''',
-				  (user_id, adminid, int(keep), dockerfile_content))
-		if not c.fetchone():
-			c.execute('INSERT INTO dockerfiles (userid, adminid, keep, dockerfile, sent_at) VALUES (?, ?, ?, ?, ?)',
-					  (user_id, adminid, int(keep), dockerfile_content, datetime.datetime.now()))
-	conn.commit()
-	conn.close()
-	return jsonify({'message': f'Dockerfile stored in DB for users: {ALLOWED_USER_IDS}'}), 200
-
-# === User Endpoint ===
-@app.route('/user/recieve', methods=['GET'])
-def user_receive():
-	"""
-	User can receive all their Dockerfiles with keep=true (no verification, just needs user_id param).
-	Returns a list of dockerfiles and their sources as JSON.
-	"""
-	user_id = request.args.get('user_id')
-	if not user_id:
-		return jsonify({'error': 'user_id required as query param'}), 400
-	conn = sqlite3.connect(DB_PATH)
-	c = conn.cursor()
-	c.execute('SELECT dockerfile, adminid FROM dockerfiles WHERE userid = ? AND keep = 1 ORDER BY sent_at DESC', (user_id,))
-	rows = c.fetchall()
-	conn.close()
-	if not rows:
-		return jsonify({'error': 'No Dockerfile available for this user'}), 404
-	dockerfiles = []
-	for row in rows:
-		dockerfile_content = row[0].decode('utf-8') if isinstance(row[0], bytes) else str(row[0])
-		adminid = row[1]
-		dockerfiles.append({
-			'dockerfile': dockerfile_content,
-			'source': adminid
-		})
-	return jsonify({'dockerfiles': dockerfiles})
-
 # === Docker Generation Endpoint ===
 @app.route('/admin/generate-docker', methods=['POST'])
 def admin_gendock():
@@ -108,8 +55,8 @@ def admin_gendock():
 		return jsonify({'error': 'adminid, n, and batch_number are required'}), 400
 	
 	try:
-		# Call the generatedocker function from admin.py
-		generatedocker(root_folder, n, batch_number)
+		# Call the generatedocker function from admin.py with adminid
+		generatedocker(root_folder, n, batch_number, adminid)
 		
 		# Read the generated Dockerfile content
 		dockerfile_path = os.path.join(BASE_DIR, root_folder, 'Dockerfile')

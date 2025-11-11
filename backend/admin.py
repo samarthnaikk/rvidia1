@@ -52,7 +52,7 @@ def getfilelist(required_files, folder_path):
 		return True, []
 
 
-def generatedocker(root_folder, n, batch_number):
+def generatedocker(root_folder, n, batch_number, adminid=None):
 	files_folder = os.path.join(root_folder, 'files')
 	all_files = sorted([f for f in os.listdir(files_folder) if os.path.isfile(os.path.join(files_folder, f))])
 	total_files = len(all_files)
@@ -77,9 +77,39 @@ def generatedocker(root_folder, n, batch_number):
 	for file in batch_files:
 		dockerfile_content.append(f'COPY files/{file} /app/files/{file}')
 	dockerfile_content.append('CMD ["python", "app.py"]')
+	
+	# Write to file
 	dockerfile_path = os.path.join(root_folder, 'Dockerfile')
+	dockerfile_text = '\n'.join(dockerfile_content)
 	with open(dockerfile_path, 'w') as f:
-		f.write('\n'.join(dockerfile_content))
+		f.write(dockerfile_text)
 	print(f"Dockerfile written for batch {batch_number} with files: {batch_files}")
+	
+	# Save to database if adminid is provided
+	if adminid:
+		try:
+			# Connect to dockerfiles.db
+			db_path = os.path.join(os.path.dirname(__file__), 'dockerfiles.db')
+			conn = sqlite3.connect(db_path)
+			c = conn.cursor()
+			
+			# Create fileinfo table if it doesn't exist
+			c.execute('''CREATE TABLE IF NOT EXISTS fileinfo (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				adminid TEXT NOT NULL,
+				content TEXT NOT NULL,
+				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			)''')
+			
+			# Insert the dockerfile content
+			c.execute('INSERT INTO fileinfo (adminid, content) VALUES (?, ?)', 
+					  (str(adminid), dockerfile_text))
+			
+			conn.commit()
+			conn.close()
+			print(f"Dockerfile saved to database for admin {adminid}")
+			
+		except Exception as e:
+			print(f"Error saving to database: {e}")
 
 #print(print_users())
