@@ -4,10 +4,12 @@ import os
 import sqlite3
 import datetime
 from flask import Flask, request, jsonify, send_file, after_this_request
+from flask_cors import CORS
 from admin import generatedocker
 
 # === App and DB Setup ===
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 # Allowed users (for admin send)
 ALLOWED_USER_IDS = ['user1', 'user2', 'user3']

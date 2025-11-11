@@ -4,7 +4,7 @@ import { useAuthContext } from "@/components/auth-provider";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { User, Shield, Upload } from "lucide-react";
+import { User, Shield, Upload, Container } from "lucide-react";
 
 interface ConnectedUser {
   id: number;
@@ -18,6 +18,8 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [users, setUsers] = useState<ConnectedUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(true);
+  const [dockerLoading, setDockerLoading] = useState(false);
+  const [dockerMessage, setDockerMessage] = useState("");
 
   useEffect(() => {
     if (!loading && (!user || (user.role?.toLowerCase() !== "admin" && !isAdmin))) {
@@ -49,6 +51,46 @@ export default function AdminDashboard() {
       fetchUsers();
     }
   }, [user, isAdmin]);
+
+  // Handle Docker generation with hardcoded values
+  const handleDockerGeneration = async () => {
+    if (!user?.id) {
+      alert("Admin ID not available");
+      return;
+    }
+
+    setDockerLoading(true);
+    setDockerMessage("");
+
+    try {
+      const response = await fetch("http://localhost:5001/admin/generate-docker", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          adminid: user.id.toString(),
+          n: 3,
+          batch_number: 2,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(`✅ Success! Dockerfile generated for batch 2/3`);
+        setDockerMessage(`✅ Success! Dockerfile generated for batch 2/3`);
+      } else {
+        alert(`❌ Error: ${data.error || "Failed to generate Docker"}`);
+        setDockerMessage(`❌ Error: ${data.error || "Failed to generate Docker"}`);
+      }
+    } catch (error) {
+      alert(`❌ Network Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+      setDockerMessage(`❌ Network Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setDockerLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -144,35 +186,72 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Right Column: Connected Users List & Upload Button */}
+            {/* Right Column: Connected Users List & Action Buttons */}
             <div className="lg:col-span-3 space-y-4">
-              {/* Upload Dockerfile Button */}
-              <a
-                href="/admin/dockerfiles"
-                className="block w-full"
-              >
-                <div className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-lg p-4 cursor-pointer transition-all duration-300 transform hover:scale-105 border border-white/10">
+              {/* Action Buttons Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Upload Dockerfile Button */}
+                <a
+                  href="/admin/dockerfiles"
+                  className="block w-full"
+                >
+                  <div className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-lg p-4 cursor-pointer transition-all duration-300 transform hover:scale-105 border border-white/10">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+                        <Upload className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <h3
+                          className="text-white font-semibold text-sm"
+                          style={{ fontFamily: "Lato, sans-serif" }}
+                        >
+                          Upload Dockerfile
+                        </h3>
+                        <p
+                          className="text-white/70 text-xs"
+                          style={{ fontFamily: "Lato, sans-serif", fontWeight: "300" }}
+                        >
+                          Upload a new Dockerfile for all users
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+
+                {/* Generate Docker Button */}
+                <button
+                  onClick={handleDockerGeneration}
+                  disabled={dockerLoading}
+                  className="w-full bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed rounded-lg p-4 transition-all duration-300 transform hover:scale-105 border border-white/10"
+                >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
-                      <Upload className="h-5 w-5 text-white" />
+                      <Container className="h-5 w-5 text-white" />
                     </div>
-                    <div>
+                    <div className="text-left">
                       <h3
                         className="text-white font-semibold text-sm"
                         style={{ fontFamily: "Lato, sans-serif" }}
                       >
-                        Upload Dockerfile
+                        {dockerLoading ? "Generating..." : "Generate Docker"}
                       </h3>
                       <p
                         className="text-white/70 text-xs"
                         style={{ fontFamily: "Lato, sans-serif", fontWeight: "300" }}
                       >
-                        Upload a new Dockerfile for all users
+                        Generate Dockerfile (batch 2/3)
                       </p>
                     </div>
                   </div>
+                </button>
+              </div>
+
+              {/* Docker Generation Status */}
+              {dockerMessage && (
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4">
+                  <p className="text-white text-sm">{dockerMessage}</p>
                 </div>
-              </a>
+              )}
 
               {/* Connected Users List */}
               <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4">
