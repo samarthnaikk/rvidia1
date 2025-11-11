@@ -110,12 +110,40 @@ def admin_gendock():
 	try:
 		# Call the generatedocker function from admin.py
 		generatedocker(root_folder, n, batch_number)
+		
+		# Read the generated Dockerfile content
+		dockerfile_path = os.path.join(BASE_DIR, root_folder, 'Dockerfile')
+		dockerfile_content = ""
+		
+		print(f"BASE_DIR: {BASE_DIR}")
+		print(f"Looking for Dockerfile at: {dockerfile_path}")
+		print(f"File exists: {os.path.exists(dockerfile_path)}")
+		
+		if os.path.exists(dockerfile_path):
+			with open(dockerfile_path, 'r') as f:
+				dockerfile_content = f.read()
+			print(f"Dockerfile content read: {len(dockerfile_content)} characters")
+			print(f"First 100 chars: {dockerfile_content[:100]}")
+		else:
+			print("Dockerfile not found!")
+			# Try alternative path
+			alt_path = os.path.join(os.getcwd(), root_folder, 'Dockerfile')
+			print(f"Trying alternative path: {alt_path}")
+			if os.path.exists(alt_path):
+				with open(alt_path, 'r') as f:
+					dockerfile_content = f.read()
+				print(f"Found at alternative path! Content length: {len(dockerfile_content)}")
+			else:
+				print("Alternative path also not found!")
+		
 		return jsonify({
 			'success': True,
 			'message': f'Dockerfile generated for admin {adminid}, batch {batch_number}/{n}',
 			'adminid': adminid,
 			'batch': batch_number,
-			'total_batches': n
+			'total_batches': n,
+			'dockerfile_content': dockerfile_content,
+			'dockerfile_path': dockerfile_path  # For debugging
 		}), 200
 	except Exception as e:
 		return jsonify({'error': f'Failed to generate Dockerfile: {str(e)}'}), 500

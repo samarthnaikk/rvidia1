@@ -20,6 +20,7 @@ export default function AdminDashboard() {
   const [usersLoading, setUsersLoading] = useState(true);
   const [dockerLoading, setDockerLoading] = useState(false);
   const [dockerMessage, setDockerMessage] = useState("");
+  const [dockerfileContent, setDockerfileContent] = useState("");
 
   useEffect(() => {
     if (!loading && (!user || (user.role?.toLowerCase() !== "admin" && !isAdmin))) {
@@ -78,15 +79,22 @@ export default function AdminDashboard() {
       const data = await response.json();
 
       if (response.ok) {
+        console.log("Response data:", data);
+        console.log("Dockerfile content:", data.dockerfile_content);
+        console.log("Dockerfile content length:", data.dockerfile_content?.length || 0);
+        
         alert(`✅ Success! Dockerfile generated for batch 2/3`);
         setDockerMessage(`✅ Success! Dockerfile generated for batch 2/3`);
+        setDockerfileContent(data.dockerfile_content || "No content received");
       } else {
         alert(`❌ Error: ${data.error || "Failed to generate Docker"}`);
         setDockerMessage(`❌ Error: ${data.error || "Failed to generate Docker"}`);
+        setDockerfileContent("");
       }
     } catch (error) {
       alert(`❌ Network Error: ${error instanceof Error ? error.message : "Unknown error"}`);
       setDockerMessage(`❌ Network Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+      setDockerfileContent("");
     } finally {
       setDockerLoading(false);
     }
@@ -250,6 +258,23 @@ export default function AdminDashboard() {
               {dockerMessage && (
                 <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4">
                   <p className="text-white text-sm">{dockerMessage}</p>
+                </div>
+              )}
+
+              {/* Generated Dockerfile Content */}
+              {dockerfileContent && (
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4">
+                  <h3 
+                    className="text-white font-semibold text-sm mb-3 uppercase tracking-wide"
+                    style={{ fontFamily: "Lato, sans-serif" }}
+                  >
+                    Generated Dockerfile ({dockerfileContent.length} chars)
+                  </h3>
+                  <div className="bg-black/40 rounded-lg p-4 border border-white/5">
+                    <pre className="text-green-300 text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+                      {dockerfileContent || "No content available"}
+                    </pre>
+                  </div>
                 </div>
               )}
 
