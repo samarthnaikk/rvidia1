@@ -1,39 +1,23 @@
 "use client";
 
 import { useAuthContext } from "@/components/auth-provider";
-import { SessionManager } from "@/lib/client/session";
 import { DashboardHeader } from "@/components/dashboard-header";
-import { GPUStatsCard } from "@/components/gpu-stats-card";
-import { TaskListCard } from "@/components/task-list-card";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Clock, CheckCircle, Zap, RefreshCw } from "lucide-react";
+import DockerfileDisplay from "@/components/dockerfile-display";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { userApi } from "@/lib/api/backend";
-import { useMultipleApi } from "@/lib/api/hooks";
+import { useEffect, useState } from "react";
+import { User, Shield } from "lucide-react";
+
+interface AdminInfo {
+  id: number;
+  name?: string;
+  email?: string;
+}
 
 export default function UserDashboard() {
   const { isAuthenticated, user, loading } = useAuthContext();
   const router = useRouter();
-
-  // Fetch all user data
-  const {
-    data,
-    loading: apiLoading,
-    errors,
-    refetch,
-  } = useMultipleApi(
-    {
-      stats: userApi.getStats,
-      gpus: userApi.getGPUs,
-      tasks: userApi.getTasks,
-      processors: userApi.getProcessors,
-    },
-    {
-      autoFetch: true,
-      refreshInterval: 15000, // Refresh every 15 seconds for real-time updates
-    }
-  );
+  const [adminInfo, setAdminInfo] = useState<AdminInfo | null>(null);
+  const [adminLoading, setAdminLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -49,6 +33,33 @@ export default function UserDashboard() {
       return;
     }
   }, [isAuthenticated, user, loading, router]);
+
+  // Fetch admin info from the Dockerfile endpoint
+  useEffect(() => {
+    const fetchAdminInfo = async () => {
+      try {
+        setAdminLoading(true);
+        const response = await fetch("/api/dockerfile", {
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.admin) {
+            setAdminInfo(data.admin);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch admin info:", err);
+      } finally {
+        setAdminLoading(false);
+      }
+    };
+
+    if (isAuthenticated) {
+      fetchAdminInfo();
+    }
+  }, [isAuthenticated]);
 
   // Show loading while checking authentication
   if (loading) {
@@ -74,224 +85,87 @@ export default function UserDashboard() {
     );
   }
 
-  // Get data with fallbacks
-  const stats = data.stats || {
-    activeTasks: 0,
-    completedToday: 0,
-    avgRuntime: "0h",
-    changeFromYesterday: {
-      activeTasks: 0,
-      completedToday: 0,
-      avgRuntime: "0h",
-    },
-  };
-  const gpus = data.gpus || [];
-  const tasks = data.tasks || [];
-  const processors = data.processors || {
-    activeProcessors: 0,
-    totalProcessors: 0,
-    efficiency: 0,
-  };
   return (
     <div className="min-h-screen bg-black">
       <DashboardHeader />
 
       <main className="pt-24 p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="max-w-6xl mx-auto space-y-6">
           {/* Welcome Section */}
           <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-6 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2
-                  className="text-2xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400"
-                  style={{ fontFamily: "Lato, sans-serif", fontWeight: "400" }}
-                >
-                  Welcome to your Dashboard!
-                </h2>
-                <p
-                  className="text-white/70"
-                  style={{ fontFamily: "Lato, sans-serif", fontWeight: "300" }}
-                >
-                  Your GPU computing environment is ready. Monitor your tasks
-                  and system performance below.
-                </p>
-              </div>
-              <button
-                onClick={() => refetch()}
-                disabled={apiLoading}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20 hover:border-white/40 transition-all duration-300 text-sm font-medium flex items-center gap-2 disabled:opacity-50"
-                style={{ fontFamily: "Lato, sans-serif" }}
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${apiLoading ? "animate-spin" : ""}`}
-                />
-                Refresh
-              </button>
-            </div>
+            <h2
+              className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400"
+              style={{ fontFamily: "Lato, sans-serif", fontWeight: "400" }}
+            >
+              Dashboard
+            </h2>
           </div>
 
-          {/* Stats Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 hover:border-purple-400/50 transition-all duration-300 rounded-lg p-6">
-              <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3
-                  className="text-sm font-medium text-white/80"
-                  style={{ fontFamily: "Lato, sans-serif" }}
-                >
-                  Active Tasks
-                </h3>
-                <Activity className="h-4 w-4 text-purple-400" />
-              </div>
-              <div>
+          {/* Main Content: Two Columns */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            {/* Left Column: ID Cards */}
+            <div className="space-y-4">
+              {/* User ID Card */}
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 hover:border-blue-400/50 transition-all duration-300 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <User className="h-4 w-4 text-blue-400" />
+                  <h3
+                    className="text-xs font-medium text-white/80 uppercase tracking-wide"
+                    style={{ fontFamily: "Lato, sans-serif" }}
+                  >
+                    Your ID
+                  </h3>
+                </div>
                 <div
                   className="text-2xl font-bold text-white"
                   style={{ fontFamily: "Lato, sans-serif" }}
                 >
-                  {apiLoading ? "..." : stats.activeTasks || 0}
+                  {user?.id || "—"}
                 </div>
-                <p
-                  className="text-xs text-white/60"
-                  style={{ fontFamily: "Lato, sans-serif", fontWeight: "300" }}
-                >
-                  {apiLoading
-                    ? "Loading..."
-                    : `${
-                        stats.changeFromYesterday.activeTasks >= 0 ? "+" : ""
-                      }${stats.changeFromYesterday.activeTasks} from yesterday`}
-                </p>
               </div>
-            </div>
 
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 hover:border-purple-400/50 transition-all duration-300 rounded-lg p-6">
-              <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3
-                  className="text-sm font-medium text-white/80"
-                  style={{ fontFamily: "Lato, sans-serif" }}
-                >
-                  Completed Today
-                </h3>
-                <CheckCircle className="h-4 w-4 text-blue-400" />
-              </div>
-              <div>
+              {/* Admin ID Card */}
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 hover:border-purple-400/50 transition-all duration-300 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Shield className="h-4 w-4 text-purple-400" />
+                  <h3
+                    className="text-xs font-medium text-white/80 uppercase tracking-wide"
+                    style={{ fontFamily: "Lato, sans-serif" }}
+                  >
+                    Admin ID
+                  </h3>
+                </div>
                 <div
                   className="text-2xl font-bold text-white"
                   style={{ fontFamily: "Lato, sans-serif" }}
                 >
-                  {apiLoading ? "..." : stats.completedToday || 0}
+                  {adminLoading ? "..." : adminInfo?.id || "—"}
                 </div>
-                <p
-                  className="text-xs text-white/60"
-                  style={{ fontFamily: "Lato, sans-serif", fontWeight: "300" }}
-                >
-                  {apiLoading
-                    ? "Loading..."
-                    : `${
-                        stats.changeFromYesterday.completedToday >= 0 ? "+" : ""
-                      }${
-                        stats.changeFromYesterday.completedToday
-                      } from yesterday`}
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 hover:border-purple-400/50 transition-all duration-300 rounded-lg p-6">
-              <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3
-                  className="text-sm font-medium text-white/80"
-                  style={{ fontFamily: "Lato, sans-serif" }}
-                >
-                  Avg. Runtime
-                </h3>
-                <Clock className="h-4 w-4 text-purple-400" />
-              </div>
-              <div>
-                <div
-                  className="text-2xl font-bold text-white"
-                  style={{ fontFamily: "Lato, sans-serif" }}
-                >
-                  {apiLoading ? "..." : stats.avgRuntime || "0h"}
-                </div>
-                <p
-                  className="text-xs text-white/60"
-                  style={{ fontFamily: "Lato, sans-serif", fontWeight: "300" }}
-                >
-                  {apiLoading
-                    ? "Loading..."
-                    : `${stats.changeFromYesterday.avgRuntime} from yesterday`}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* GPU Stats */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Show loading state for GPUs */}
-            {apiLoading && (
-              <>
-                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-6">
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400"></div>
-                  </div>
-                </div>
-                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-6">
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400"></div>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Show error state for GPUs */}
-            {errors.gpus && !apiLoading && (
-              <div className="col-span-2 p-4 bg-red-400/20 border border-red-400/30 rounded-lg text-red-400 text-sm">
-                Failed to load GPU information: {errors.gpus}
-              </div>
-            )}
-
-            {/* Show GPU data or empty state */}
-            {!apiLoading && !errors.gpus && (
-              <>
-                {gpus.length > 0 ? (
-                  gpus.map((gpu, index) => (
-                    <GPUStatsCard
-                      key={gpu.id || index}
-                      gpuName={gpu.gpuName}
-                      utilization={gpu.utilization}
-                      memory={gpu.memory}
-                    />
-                  ))
-                ) : (
-                  <div className="col-span-2 text-center py-8">
-                    <p
-                      className="text-white/60"
-                      style={{ fontFamily: "Lato, sans-serif" }}
-                    >
-                      No GPU information available
-                    </p>
-                  </div>
+                {adminInfo?.name && (
+                  <p
+                    className="text-xs text-white/60 mt-2"
+                    style={{ fontFamily: "Lato, sans-serif", fontWeight: "300" }}
+                  >
+                    {adminInfo.name}
+                  </p>
                 )}
-              </>
-            )}
-          </div>
-
-          {/* Tasks Section */}
-          <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-6">
-            {/* Show loading state for tasks */}
-            {apiLoading && (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400"></div>
               </div>
-            )}
+            </div>
 
-            {/* Show error state for tasks */}
-            {errors.tasks && !apiLoading && (
-              <div className="p-4 bg-red-400/20 border border-red-400/30 rounded-lg text-red-400 text-sm">
-                Failed to load tasks: {errors.tasks}
+            {/* Right Column: Dockerfile Display */}
+            <div className="lg:col-span-3">
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4 h-full">
+                <h3
+                  className="text-sm font-semibold text-white mb-3 uppercase tracking-wide"
+                  style={{ fontFamily: "Lato, sans-serif" }}
+                >
+                  Dockerfile
+                </h3>
+                <div className="bg-black/40 rounded-lg p-3 h-96 overflow-auto border border-white/10">
+                  <DockerfileDisplay userId={user?.id} />
+                </div>
               </div>
-            )}
-
-            {/* Show task data */}
-            {!apiLoading && !errors.tasks && <TaskListCard tasks={tasks} />}
+            </div>
           </div>
         </div>
       </main>

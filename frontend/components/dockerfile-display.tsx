@@ -1,156 +1,178 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, Download } from "lucide-react";
 
 interface Dockerfile {
   id: number;
-  name: string;
+  filename: string;
   content: string;
   createdAt: string;
 }
 
 interface DockerfileDisplayProps {
-  adminId?: string;
   userId?: string;
 }
 
 export default function DockerfileDisplay({
-  adminId,
   userId,
 }: DockerfileDisplayProps) {
-  const [dockerfiles, setDockerfiles] = useState<Dockerfile[]>([]);
+  const [dockerfile, setDockerfile] = useState<Dockerfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
-    const fetchDockerfiles = async () => {
+    const fetchDockerfile = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Check if adminId or userId is provided
-        if (!adminId && !userId) {
-          setError("Admin ID or User ID is required to view Dockerfiles");
-          setLoading(false);
-          return;
-        }
+        // Fetch the single Dockerfile from admin
+        const response = await fetch("/api/dockerfile", {
+          method: "GET",
+          credentials: "include",
+        });
 
-        const params = new URLSearchParams();
-        if (adminId) params.append("adminId", adminId);
-        if (userId) params.append("userId", userId);
-
-        const response = await fetch(
-          `/api/docker/get-dockerfiles?${params.toString()}`
-        );
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.error || "Failed to fetch Dockerfiles");
+          if (response.status === 404) {
+            setDockerfile(null);
+          } else {
+            throw new Error(data.error || "Failed to fetch Dockerfile");
+          }
+        } else {
+          setDockerfile(data);
         }
-
-        setDockerfiles(data.data || []);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
         setError(message);
-        setDockerfiles([]);
+        setDockerfile(null);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDockerfiles();
-  }, [adminId, userId]);
+    fetchDockerfile();
+  }, []);
 
-  const handleCopy = (content: string, id: number) => {
-    navigator.clipboard.writeText(content);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+  const handleCopy = () => {
+    if (dockerfile) {
+      navigator.clipboard.writeText(dockerfile.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
-  if (!adminId && !userId) {
-    return (
-      <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <p className="text-yellow-800 font-semibold">
-          ⚠️ No Admin ID or User ID provided
-        </p>
-        <p className="text-yellow-700 text-sm mt-1">
-          Dockerfiles are only visible to authenticated users
-        </p>
-      </div>
-    );
-  }
+  const handleDownload = async () => {
+    if (!dockerfile) return;
+    
+    try {
+      setDownloading(true);
+      const response = await fetch(`/api/dockerfile/${dockerfile.id}/download`, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to download Dockerfile");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = dockerfile.filename || "Dockerfile";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Download failed:", err);
+      alert("Failed to download Dockerfile");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   if (loading) {
     return (
-      <div className="p-6 bg-gray-100 rounded-lg">
-        <p className="text-gray-700 font-semibold">Loading Dockerfiles...</p>
+      <div className="flex items-center justify-center py-6">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-400 mx-auto mb-2"></div>
+          <p className="text-white/60 text-xs">Loading...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
-        <p className="text-red-800 font-semibold">Error</p>
-        <p className="text-red-700 text-sm mt-1">{error}</p>
+      <div className="p-3 bg-red-900/20 border border-red-400/30 rounded text-center">
+        <p className="text-red-300 text-xs font-semibold">Error</p>
+        <p className="text-red-200 text-xs mt-1">{error}</p>
       </div>
     );
   }
 
-  if (dockerfiles.length === 0) {
+  if (!dockerfile) {
     return (
-      <div className="p-6 bg-gray-50 border border-gray-200 rounded-lg">
-        <p className="text-gray-700 font-semibold">No Dockerfiles Found</p>
-        <p className="text-gray-600 text-sm mt-1">
-          You don't have any Dockerfiles yet
+      <div className="p-3 bg-yellow-900/20 border border-yellow-400/30 rounded text-center">
+        <p className="text-yellow-300 text-xs font-semibold">No Dockerfile Available</p>
+        <p className="text-yellow-200 text-xs mt-1">
+          Admin hasn't uploaded a Dockerfile yet
         </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {dockerfiles.map((dockerfile) => (
-        <div
-          key={dockerfile.id}
-          className="border border-gray-300 rounded-lg overflow-hidden bg-white shadow-sm"
-        >
-          {/* Header */}
-          <div className="bg-gray-50 p-4 border-b border-gray-200 flex justify-between items-center">
-            <div>
-              <h3 className="font-semibold text-gray-900">{dockerfile.name}</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                Created: {new Date(dockerfile.createdAt).toLocaleDateString()}
-              </p>
-            </div>
-            <button
-              onClick={() => handleCopy(dockerfile.content, dockerfile.id)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
-            >
-              {copiedId === dockerfile.id ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4" />
-                  Copy
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Content - Rectangle with scrollable text */}
-          <div className="p-4">
-            <div className="bg-gray-900 text-gray-100 p-4 rounded-lg border border-gray-700 overflow-auto max-h-96 font-mono text-sm whitespace-pre-wrap break-words">
-              {dockerfile.content}
-            </div>
-          </div>
+    <div className="h-full flex flex-col">
+      {/* Header with buttons */}
+      <div className="flex justify-between items-start gap-2 mb-3 pb-3 border-b border-white/10">
+        <div className="min-w-0">
+          <h4 className="text-white text-xs font-semibold truncate">
+            {dockerfile.filename || "Dockerfile"}
+          </h4>
+          <p className="text-white/40 text-xs mt-0.5">
+            {new Date(dockerfile.createdAt).toLocaleDateString()}
+          </p>
         </div>
-      ))}
+        <div className="flex gap-1 flex-shrink-0">
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1 px-2 py-1 bg-blue-600/60 hover:bg-blue-600 text-white rounded text-xs transition"
+            title="Copy to clipboard"
+          >
+            {copied ? (
+              <>
+                <Check className="w-3 h-3" />
+              </>
+            ) : (
+              <>
+                <Copy className="w-3 h-3" />
+              </>
+            )}
+          </button>
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="flex items-center gap-1 px-2 py-1 bg-purple-600/60 hover:bg-purple-600 text-white rounded text-xs transition disabled:opacity-50"
+            title="Download Dockerfile"
+          >
+            <Download className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+
+      {/* Content - Scrollable text */}
+      <div className="flex-1 overflow-auto">
+        <div className="bg-gray-950 text-green-300 p-2 rounded font-mono text-xs whitespace-pre-wrap break-words h-full overflow-auto leading-relaxed">
+          {dockerfile.content}
+        </div>
+      </div>
     </div>
   );
 }
