@@ -4,6 +4,7 @@ import os
 import sqlite3
 import datetime
 from flask import Flask, request, jsonify, send_file, after_this_request
+from admin import generatedocker
 
 # === App and DB Setup ===
 app = Flask(__name__)
@@ -87,6 +88,35 @@ def user_receive():
 			'source': adminid
 		})
 	return jsonify({'dockerfiles': dockerfiles})
+
+# === Docker Generation Endpoint ===
+@app.route('/admin/generate-docker', methods=['POST'])
+def admin_gendock():
+	"""
+	Admin endpoint to generate Dockerfile using generatedocker function.
+	Expects: adminid, n, batch_number in JSON body.
+	"""
+	data = request.json or {}
+	adminid = data.get('adminid')
+	n = data.get('n')
+	batch_number = data.get('batch_number')
+	root_folder = data.get('root_folder', 'data')  # default to 'data' folder
+	
+	if not adminid or not n or not batch_number:
+		return jsonify({'error': 'adminid, n, and batch_number are required'}), 400
+	
+	try:
+		# Call the generatedocker function from admin.py
+		generatedocker(root_folder, n, batch_number)
+		return jsonify({
+			'success': True,
+			'message': f'Dockerfile generated for admin {adminid}, batch {batch_number}/{n}',
+			'adminid': adminid,
+			'batch': batch_number,
+			'total_batches': n
+		}), 200
+	except Exception as e:
+		return jsonify({'error': f'Failed to generate Dockerfile: {str(e)}'}), 500
 
 # === Main Entrypoint ===
 if __name__ == '__main__':
