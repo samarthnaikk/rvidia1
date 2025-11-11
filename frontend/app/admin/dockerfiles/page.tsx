@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, AlertCircle, CheckCircle } from "lucide-react";
+import { Upload, AlertCircle, CheckCircle, FileUp } from "lucide-react";
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
@@ -10,6 +10,21 @@ export default function AdminDashboard() {
   const [filename, setFilename] = useState("Dockerfile");
   const [content, setContent] = useState("");
   const [uploading, setUploading] = useState(false);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setError("");
+      setFilename(file.name);
+      const text = await file.text();
+      setContent(text);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to read file";
+      setError(`Error reading file: ${message}`);
+    }
+  };
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,6 +106,31 @@ export default function AdminDashboard() {
                 </div>
               </div>
             )}
+
+            {/* File Upload */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-200 mb-2">
+                Select Dockerfile from Your System
+              </label>
+              <div className="relative">
+                <input
+                  type="file"
+                  onChange={handleFileSelect}
+                  accept=".dockerfile,.txt,text/plain"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <div className="flex items-center justify-center gap-2 px-4 py-8 bg-gray-700 border-2 border-dashed border-gray-600 text-white rounded-lg hover:border-blue-500 hover:bg-gray-650 transition">
+                  <FileUp size={20} className="text-gray-400" />
+                  <div className="text-center">
+                    <p className="font-medium">Click to upload or drag and drop</p>
+                    <p className="text-xs text-gray-400">Dockerfile or text files</p>
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-gray-400 mt-2">
+                Or manually enter the filename and content below
+              </p>
+            </div>
 
             {/* Filename Field */}
             <div>
