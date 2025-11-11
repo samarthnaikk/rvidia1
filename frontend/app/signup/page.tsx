@@ -55,7 +55,7 @@ export default function SignUpPage() {
     if (!validateForm()) return; 
     setLoading(true); 
     try { 
-      const res = await fetch("/api/users/create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: form.username, email: form.email, password: form.password, role: selectedRole?.toUpperCase() || "USER" }) }); 
+      const res = await fetch("/api/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: form.username, email: form.email, password: form.password, role: selectedRole?.toUpperCase() || "USER" }) }); 
       const data = await res.json(); 
       if (res.ok) { 
         setCurrentStep("success"); 

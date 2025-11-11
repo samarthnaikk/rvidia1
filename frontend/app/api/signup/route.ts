@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
 import {
   hashPassword,
   generateJWT,
@@ -9,11 +8,14 @@ import {
 } from "@/lib/auth-utils";
 
 export async function POST(request: Request) {
-  const { username, email, password, role } = await request.json();
-  if (!username || !email || !password) {
-    return NextResponse.json({ error: "Missing fields" }, { status: 400 });
-  }
   try {
+    const { username, email, password, role } = await request.json();
+
+    // Validate input
+    if (!username || !email || !password) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
     // Check if username already exists
     const existingUserByUsername = await prisma.user.findUnique({
       where: { username },
@@ -22,7 +24,7 @@ export async function POST(request: Request) {
     if (existingUserByUsername) {
       return NextResponse.json(
         { error: "Username already taken" },
-        { status: 400 }
+        { status: 409 }
       );
     }
 
@@ -34,7 +36,7 @@ export async function POST(request: Request) {
     if (existingUserByEmail) {
       return NextResponse.json(
         { error: "Email already registered" },
-        { status: 400 }
+        { status: 409 }
       );
     }
 
@@ -72,10 +74,8 @@ export async function POST(request: Request) {
       },
     });
 
-    // Set secure HTTP-only cookie using our utility function
+    // Set secure HTTP-only cookie
     setTokenCookie(response, token);
-
-    // Also set legacy cookie for backward compatibility
     response.cookies.set("auth-token", token, createSecureCookieOptions());
 
     console.log("API /signup: Set auth cookies for new user:", user.email);
@@ -83,25 +83,6 @@ export async function POST(request: Request) {
     return response;
   } catch (error) {
     console.error("Signup error:", error);
-
-    // Handle specific Prisma errors
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      // Unique constraint violation has code P2002
-      if (error.code === "P2002") {
-        const field = error.meta?.target as string[];
-        if (field.includes("username")) {
-          return NextResponse.json(
-            { error: "Username already taken" },
-            { status: 400 }
-          );
-        } else if (field.includes("email")) {
-          return NextResponse.json(
-            { error: "Email already registered" },
-            { status: 400 }
-          );
-        }
-      }
-    }
 
     return NextResponse.json(
       { error: "User creation failed" },
