@@ -1,11 +1,15 @@
 
 # === Imports ===
 import os
-import sqlite3
 import datetime
 from flask import Flask, request, jsonify, send_file, after_this_request
 from flask_cors import CORS
+from supabase import create_client, Client
+from dotenv import load_dotenv
 from admin import generatedocker
+
+# Load environment variables from .env file
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 # === App and DB Setup ===
 app = Flask(__name__)
@@ -16,27 +20,27 @@ ALLOWED_USER_IDS = ['user1', 'user2', 'user3']
 
 # Paths
 BASE_DIR = os.path.dirname(__file__)
-DB_PATH = os.path.join(BASE_DIR, 'dockerfiles.db')
 DOCKERFILE_PATH = os.path.join(BASE_DIR, 'data', 'Dockerfile')
 
-# Initialize SQLite DB
-def init_db():
-	conn = sqlite3.connect(DB_PATH)
-	c = conn.cursor()
-	c.execute('''CREATE TABLE IF NOT EXISTS dockerfiles (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		userid TEXT NOT NULL,
-		adminid TEXT NOT NULL,
-		keep INTEGER NOT NULL,
-		dockerfile BLOB NOT NULL,
-		sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	)''')
-	c.execute('CREATE INDEX IF NOT EXISTS idx_userid ON dockerfiles(userid)')
-	c.execute('CREATE INDEX IF NOT EXISTS idx_adminid ON dockerfiles(adminid)')
-	conn.commit()
-	conn.close()
+# Supabase configuration
+SUPABASE_URL = os.getenv('PROJECT_URL')
+SUPABASE_KEY = os.getenv('API_KEY')
 
-init_db()
+# Initialize Supabase client
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# Test Supabase connection
+def test_supabase_connection():
+    try:
+        # Simple query to test connection
+        result = supabase.table('dockerfiles').select('id').limit(1).execute()
+        print("Supabase connection successful")
+        return True
+    except Exception as e:
+        print(f"Supabase connection failed: {e}")
+        return False
+
+test_supabase_connection()
 
 # === Docker Generation Endpoint ===
 @app.route('/admin/generate-docker', methods=['POST'])
@@ -94,6 +98,68 @@ def admin_gendock():
 		}), 200
 	except Exception as e:
 		return jsonify({'error': f'Failed to generate Dockerfile: {str(e)}'}), 500
+
+# === Admin Send Endpoint ===
+@app.route('/admin/send', methods=['POST'])
+def admin_send():
+	"""
+	Admin sends Dockerfile to all allowed users. Stores in Supabase.
+	"""
+	data = request.json or {}
+	adminid = data.get('adminid', 'admin')
+	keep = data.get('keep', True)
+	
+	if not os.path.exists(DOCKERFILE_PATH):
+		return jsonify({'error': 'Dockerfile not found'}), 404
+	
+	try:
+		with open(DOCKERFILE_PATH, 'r') as f:
+			dockerfile_content = f.read()
+		
+		for user_id in ALLOWED_USER_IDS:
+			# Check for duplicate
+			existing = supabase.table('dockerfiles').select('id').eq('userid', user_id).eq('adminid', adminid).eq('keep', int(keep)).eq('dockerfile', dockerfile_content).execute()
+			
+			if not existing.data:
+				# Insert new record
+				data_to_insert = {
+					'userid': user_id,
+					'adminid': adminid,
+					'keep': int(keep),
+					'dockerfile': dockerfile_content
+				}
+				supabase.table('dockerfiles').insert(data_to_insert).execute()
+		
+		return jsonify({'message': f'Dockerfile stored in Supabase for users: {ALLOWED_USER_IDS}'}), 200
+	except Exception as e:
+		return jsonify({'error': f'Supabase error: {str(e)}'}), 500
+
+# === User Receive Endpoint ===
+@app.route('/user/recieve', methods=['GET'])
+def user_receive():
+	"""
+	User can receive all their Dockerfiles with keep=true.
+	"""
+	user_id = request.args.get('user_id')
+	if not user_id:
+		return jsonify({'error': 'user_id required as query param'}), 400
+	
+	try:
+		result = supabase.table('dockerfiles').select('dockerfile', 'adminid').eq('userid', user_id).eq('keep', 1).order('sent_at', desc=True).execute()
+		
+		if not result.data:
+			return jsonify({'error': 'No Dockerfile available for this user'}), 404
+		
+		dockerfiles = []
+		for row in result.data:
+			dockerfiles.append({
+				'dockerfile': row['dockerfile'],
+				'source': row['adminid']
+			})
+		
+		return jsonify({'dockerfiles': dockerfiles})
+	except Exception as e:
+		return jsonify({'error': f'Supabase error: {str(e)}'}), 500
 
 # === Main Entrypoint ===
 if __name__ == '__main__':

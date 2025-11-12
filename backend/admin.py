@@ -1,5 +1,5 @@
 import os
-import sqlite3
+from supabase import create_client, Client
 
 def print_users():
     db_path = "/Users/samarthnaik/Desktop/Projects/rvidia1/frontend/prisma/dev.db"
@@ -85,31 +85,30 @@ def generatedocker(root_folder, n, batch_number, adminid=None):
 		f.write(dockerfile_text)
 	print(f"Dockerfile written for batch {batch_number} with files: {batch_files}")
 	
-	# Save to database if adminid is provided
+	# Save to Supabase if adminid is provided
 	if adminid:
 		try:
-			# Connect to dockerfiles.db
-			db_path = os.path.join(os.path.dirname(__file__), 'dockerfiles.db')
-			conn = sqlite3.connect(db_path)
-			c = conn.cursor()
+			# Get Supabase configuration from environment
+			SUPABASE_URL = os.getenv('PROJECT_URL')
+			SUPABASE_KEY = os.getenv('API_KEY')
 			
-			# Create fileinfo table if it doesn't exist
-			c.execute('''CREATE TABLE IF NOT EXISTS fileinfo (
-				id INTEGER PRIMARY KEY AUTOINCREMENT,
-				adminid TEXT NOT NULL,
-				content TEXT NOT NULL,
-				created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-			)''')
-			
-			# Insert the dockerfile content
-			c.execute('INSERT INTO fileinfo (adminid, content) VALUES (?, ?)', 
-					  (str(adminid), dockerfile_text))
-			
-			conn.commit()
-			conn.close()
-			print(f"Dockerfile saved to database for admin {adminid}")
+			if SUPABASE_URL and SUPABASE_KEY:
+				# Initialize Supabase client
+				supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+				
+				# Insert the dockerfile content into fileinfo table
+				data = {
+					'adminid': str(adminid),
+					'content': dockerfile_text
+				}
+				
+				result = supabase.table('fileinfo').insert(data).execute()
+				print(f"Dockerfile saved to Supabase for admin {adminid}")
+				print(f"Supabase response: {result}")
+			else:
+				print("Supabase credentials not found in environment variables")
 			
 		except Exception as e:
-			print(f"Error saving to database: {e}")
+			print(f"Error saving to Supabase: {e}")
 
 #print(print_users())
