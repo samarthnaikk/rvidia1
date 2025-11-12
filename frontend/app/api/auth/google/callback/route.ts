@@ -7,16 +7,18 @@ import {
   createSecureCookieOptions,
 } from "@/lib/auth-utils";
 
-const prisma = new PrismaClient();
-
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
-);
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
+    // Create clients lazily to avoid side-effects during build time
+    const prisma = new PrismaClient();
+
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID || "",
+      process.env.GOOGLE_CLIENT_SECRET || "",
+      process.env.GOOGLE_REDIRECT_URI || ""
+    );
     console.log("=== Google OAuth callback initiated ===");
     console.log("Request URL:", request.url);
 

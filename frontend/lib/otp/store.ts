@@ -84,3 +84,14 @@ export function deleteOTP(email: string): void {
   otpStore.delete(email);
   console.log(`OTP deleted for ${email}`);
 }
+
+export function getStoredEmails(): string[] {
+  const emails = Array.from(otpStore.keys());
+  // Filter out expired OTPs
+  return emails.filter((email) => {
+    const stored = otpStore.get(email);
+    return stored && Date.now() <= stored.expiresAt;
+  });
+}
+
+export { otpStore };
