@@ -163,4 +163,9 @@ def user_receive():
 
 # === Main Entrypoint ===
 if __name__ == '__main__':
-	app.run(host='0.0.0.0', port=5001)
+    app.run(host='0.0.0.0', port=5001)
+
+# For Vercel
+from vercel_python_wsgi import VercelHandler
+handler = VercelHandler(app)
+
