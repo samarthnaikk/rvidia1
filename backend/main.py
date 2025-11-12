@@ -186,11 +186,10 @@ def user_receive():
 	except Exception as e:
 		return jsonify({'error': f'Supabase error: {str(e)}'}), 500
 
-# === Vercel Handler ===
-# Export the Flask app for Vercel
-handler = app
-
 # === Main Entrypoint ===
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001)
+
+# Vercel requires this export
+application = app
 
