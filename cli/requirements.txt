@@ -1,8 +1,0 @@
-# RVIDIA CLI Requirements
-# Only uses Python standard library modules:
-# - sys, os, argparse, sqlite3, datetime
-# 
-# The CLI depends on the backend modules:
-# - backend/admin.py (generatedocker, print_users, getfilelist)
-#
-# No external dependencies required!
