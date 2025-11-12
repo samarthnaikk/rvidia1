@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from admin import generatedocker
 
 # Load environment variables from .env file
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 # === App and DB Setup ===
 app = Flask(__name__)
