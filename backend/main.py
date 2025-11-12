@@ -27,10 +27,18 @@ SUPABASE_URL = os.getenv('PROJECT_URL')
 SUPABASE_KEY = os.getenv('API_KEY')
 
 # Initialize Supabase client
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+if SUPABASE_URL and SUPABASE_KEY:
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    print("Supabase client initialized successfully")
+else:
+    print(f"Missing Supabase credentials: URL={bool(SUPABASE_URL)}, KEY={bool(SUPABASE_KEY)}")
+    supabase = None
 
 # Test Supabase connection
 def test_supabase_connection():
+    if not supabase:
+        print("Supabase client not initialized")
+        return False
     try:
         # Simple query to test connection
         result = supabase.table('dockerfiles').select('id').limit(1).execute()
@@ -123,6 +131,9 @@ def admin_send():
 	if not os.path.exists(DOCKERFILE_PATH):
 		return jsonify({'error': 'Dockerfile not found'}), 404
 	
+	if not supabase:
+		return jsonify({'error': 'Supabase not configured'}), 500
+	
 	try:
 		with open(DOCKERFILE_PATH, 'r') as f:
 			dockerfile_content = f.read()
@@ -155,6 +166,9 @@ def user_receive():
 	if not user_id:
 		return jsonify({'error': 'user_id required as query param'}), 400
 	
+	if not supabase:
+		return jsonify({'error': 'Supabase not configured'}), 500
+	
 	try:
 		result = supabase.table('dockerfiles').select('dockerfile', 'adminid').eq('userid', user_id).eq('keep', 1).order('sent_at', desc=True).execute()
 		
@@ -172,13 +186,12 @@ def user_receive():
 	except Exception as e:
 		return jsonify({'error': f'Supabase error: {str(e)}'}), 500
 
+# === Vercel Handler ===
+# Export the Flask app for Vercel
+application = app
+
 # === Main Entrypoint ===
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001)
-
-# For Vercel
-def handler(event, context):
-    from werkzeug.middleware.dispatcher import DispatcherMiddleware
-    from werkzeug.serving import run_simple
     return app
 
