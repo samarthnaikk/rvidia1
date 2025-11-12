@@ -4,6 +4,8 @@ import { getUserById } from "@/lib/user";
 
 const AUTH_COOKIE_NAME = "auth_token";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   try {
     // Get all cookies for debugging

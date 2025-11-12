@@ -5,6 +5,8 @@ import { NextRequest, NextResponse } from "next/server";
  * Useful when debugging authentication issues or if a user is stuck
  * with an invalid token.
  */
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   console.log("Clearing all auth cookies");
 

@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 // Backend now runs on port 5000 (changed from 8000)
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:5000";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { path: string[] } }
