@@ -4,7 +4,7 @@ This is the backend codebase of rvidia
 
 The **website** for the same is [here](https://rvidia.suyashh.me)
 
-The **cli** for the same is [here](https://rvidia-cli.samarthnaikk.me)
+The **cli** for the same is [here](https://samarthnaikk.me/rvidia-cli/)
 
 ## Key Files and Folders
 - `admin.py`, `main.py`: Main application scripts.
