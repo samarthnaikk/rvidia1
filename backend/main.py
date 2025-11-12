@@ -188,10 +188,9 @@ def user_receive():
 
 # === Vercel Handler ===
 # Export the Flask app for Vercel
-application = app
+handler = app
 
 # === Main Entrypoint ===
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001)
-    return app
 
