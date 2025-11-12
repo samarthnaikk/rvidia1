@@ -3,6 +3,8 @@ import { generateOTP, storeOTP } from "@/lib/otp/store";
 import { isRateLimited, getRateLimitInfo } from "@/lib/otp/rate-limiter";
 import { sendOTPEmail } from "@/lib/otp/client";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: NextRequest) {
   try {
     const { email } = await request.json();

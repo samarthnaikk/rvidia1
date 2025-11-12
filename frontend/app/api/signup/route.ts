@@ -7,6 +7,8 @@ import {
   createSecureCookieOptions,
 } from "@/lib/auth-utils";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   try {
     const { username, email, password, role } = await request.json();

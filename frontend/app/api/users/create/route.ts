@@ -3,6 +3,8 @@ import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { hashPassword } from "@/lib/auth-utils";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   try {
     const { username, email, password, role = "USER" } = await request.json();

@@ -7,6 +7,8 @@ function generateToken() {
   return crypto.randomBytes(32).toString("hex");
 }
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: NextRequest) {
   try {
     const { email } = await request.json();

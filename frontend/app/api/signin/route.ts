@@ -9,6 +9,8 @@ import {
 
 const AUTH_COOKIE_NAME = "auth_token";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   try {
     // Parse request body
