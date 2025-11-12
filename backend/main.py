@@ -42,6 +42,17 @@ def test_supabase_connection():
 
 test_supabase_connection()
 
+@app.route('/', methods=['GET'])
+def home():
+    """
+    Simple health check endpoint to verify the API is running.
+    """
+    return jsonify({
+        'status': 'success',
+        'message': 'Flask API is running on Vercel!',
+        'timestamp': datetime.datetime.utcnow().isoformat() + 'Z'
+    }), 200
+
 # === Docker Generation Endpoint ===
 @app.route('/admin/generate-docker', methods=['POST'])
 def admin_gendock():
