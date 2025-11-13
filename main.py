@@ -1,4 +1,3 @@
-
 # === Imports ===
 import os
 import datetime
@@ -64,6 +63,52 @@ def home():
 		'message': 'Flask API is running on Vercel!',
 		'timestamp': datetime.datetime.utcnow().isoformat() + 'Z'
 	}), 200
+
+# === Users Table Endpoints ===
+@app.route('/getusers', methods=['GET'])
+def get_users():
+	"""
+	Get all users from Supabase users table. Protected by route_pwd.
+	"""
+	route_pwd = request.args.get('route_pwd')
+	if route_pwd != ROUTE_PASSWORD:
+		return jsonify({'error': 'Unauthorized'}), 401
+	if not supabase:
+		return jsonify({'error': 'Supabase not configured'}), 500
+	try:
+		result = supabase.table('users').select('*').execute()
+		return jsonify({'users': result.data}), 200
+	except Exception as e:
+		return jsonify({'error': f'Supabase error: {str(e)}'}), 500
+
+@app.route('/addusers', methods=['POST'])
+def add_user():
+	"""
+	Add a new user to Supabase users table. Protected by route_pwd.
+	"""
+	data = request.json or {}
+	route_pwd = data.get('route_pwd')
+	if route_pwd != ROUTE_PASSWORD:
+		return jsonify({'error': 'Unauthorized'}), 401
+	username = data.get('username')
+	email = data.get('email')
+	password_hash = data.get('password_hash')
+	refresh_token = data.get('refresh_token')
+	if not username or not password_hash:
+		return jsonify({'error': 'username and password_hash are required'}), 400
+	if not supabase:
+		return jsonify({'error': 'Supabase not configured'}), 500
+	try:
+		user_data = {
+			'username': username,
+			'email': email,
+			'password_hash': password_hash,
+			'refresh_token': refresh_token
+		}
+		result = supabase.table('users').insert(user_data).execute()
+		return jsonify({'status': "Successfully Created User"}), 201
+	except Exception as e:
+		return jsonify({'error': f'Supabase error: {str(e)}'}), 500
 
 # === Docker Generation Endpoint ===
 @app.route('/admin/generate-docker', methods=['POST'])
